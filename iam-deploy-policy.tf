@@ -14,6 +14,16 @@ locals {
   deploy_user_name = "NewTestDibang"
 }
 
+resource "aws_iam_group" "deploy" {
+  name = "flashinfo-terraform-deploy-${var.environment}"
+}
+
+resource "aws_iam_group_membership" "deploy_user" {
+  name  = "flashinfo-terraform-deploy-members-${var.environment}"
+  group = aws_iam_group.deploy.name
+  users = [local.deploy_user_name]
+}
+
 # ── 1. Infrastructure ────────────────────────────────────────────────────────
 resource "aws_iam_policy" "deploy_infra" {
   name = "flashinfo-deploy-infra-${var.environment}"
@@ -92,23 +102,23 @@ resource "aws_iam_policy" "deploy_security" {
   })
 }
 
-# ── Attach all four policies to the deploy user ───────────────────────────────
-resource "aws_iam_user_policy_attachment" "deploy_infra" {
-  user       = local.deploy_user_name
+# ── Attach all four policies to deploy group (avoids 10 managed policies/user limit) ───────────────────────────────
+resource "aws_iam_group_policy_attachment" "deploy_infra" {
+  group      = aws_iam_group.deploy.name
   policy_arn = aws_iam_policy.deploy_infra.arn
 }
 
-resource "aws_iam_user_policy_attachment" "deploy_app" {
-  user       = local.deploy_user_name
+resource "aws_iam_group_policy_attachment" "deploy_app" {
+  group      = aws_iam_group.deploy.name
   policy_arn = aws_iam_policy.deploy_app.arn
 }
 
-resource "aws_iam_user_policy_attachment" "deploy_analytics" {
-  user       = local.deploy_user_name
+resource "aws_iam_group_policy_attachment" "deploy_analytics" {
+  group      = aws_iam_group.deploy.name
   policy_arn = aws_iam_policy.deploy_analytics.arn
 }
 
-resource "aws_iam_user_policy_attachment" "deploy_security" {
-  user       = local.deploy_user_name
+resource "aws_iam_group_policy_attachment" "deploy_security" {
+  group      = aws_iam_group.deploy.name
   policy_arn = aws_iam_policy.deploy_security.arn
 }

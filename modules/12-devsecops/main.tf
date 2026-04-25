@@ -594,6 +594,7 @@ resource "aws_cloudwatch_dashboard" "ops" {
         height = 6
         properties = {
           title  = "ALB Requests And Error Counts"
+          region = var.aws_region
           period = 60
           stat   = "Sum"
           metrics = [
@@ -609,6 +610,7 @@ resource "aws_cloudwatch_dashboard" "ops" {
         height = 6
         properties = {
           title  = "ECS API CPU And Memory"
+          region = var.aws_region
           period = 60
           stat   = "Maximum"
           metrics = [
@@ -623,6 +625,7 @@ resource "aws_cloudwatch_dashboard" "ops" {
         height = 6
         properties = {
           title  = "ALB p99 Latency"
+          region = var.aws_region
           period = 60
           stat   = "p99"
           metrics = [
@@ -636,6 +639,7 @@ resource "aws_cloudwatch_dashboard" "ops" {
         height = 6
         properties = {
           title  = "SQS — Order Queue Depth"
+          region = var.aws_region
           period = 60
           stat   = "Maximum"
           metrics = [

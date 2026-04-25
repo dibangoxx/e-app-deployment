@@ -279,8 +279,8 @@ resource "aws_securityhub_account" "main" {
 }
 
 resource "aws_securityhub_standards_subscription" "cis" {
-  count         = var.enable_security_hub ? 1 : 0
-  standards_arn = "arn:aws:securityhub:::ruleset/cis-aws-foundations-benchmark/v/1.4.0"
+  count         = var.enable_security_hub && var.enable_security_hub_cis ? 1 : 0
+  standards_arn = "arn:aws:securityhub:${data.aws_region.current.name}::standards/cis-aws-foundations-benchmark/v/1.2.0"
   depends_on    = [aws_securityhub_account.main]
 }
 
@@ -329,6 +329,35 @@ resource "aws_s3_bucket_public_access_block" "config" {
   restrict_public_buckets = true
 }
 
+resource "aws_s3_bucket_policy" "config" {
+  count  = var.enable_config ? 1 : 0
+  bucket = aws_s3_bucket.config[0].id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AWSConfigBucketPermissionsCheck"
+        Effect    = "Allow"
+        Principal = { Service = "config.amazonaws.com" }
+        Action    = "s3:GetBucketAcl"
+        Resource  = aws_s3_bucket.config[0].arn
+      },
+      {
+        Sid       = "AWSConfigBucketDelivery"
+        Effect    = "Allow"
+        Principal = { Service = "config.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.config[0].arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/Config/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      }
+    ]
+  })
+}
+
 resource "aws_config_configuration_recorder" "main" {
   count    = var.enable_config ? 1 : 0
   name     = "flashinfo-config-${var.environment}"
@@ -344,7 +373,7 @@ resource "aws_config_delivery_channel" "main" {
   count          = var.enable_config ? 1 : 0
   name           = "flashinfo-config-delivery-${var.environment}"
   s3_bucket_name = aws_s3_bucket.config[0].bucket
-  depends_on     = [aws_config_configuration_recorder.main]
+  depends_on     = [aws_config_configuration_recorder.main, aws_s3_bucket_policy.config]
 }
 
 resource "aws_config_configuration_recorder_status" "main" {
@@ -518,6 +547,12 @@ variable "enable_security_hub" {
   description = "Enable Security Hub and subscribe to CIS/best-practice standards"
   type        = bool
   default     = true
+}
+
+variable "enable_security_hub_cis" {
+  description = "Enable CIS standards subscription in Security Hub"
+  type        = bool
+  default     = false
 }
 
 variable "enable_config" {

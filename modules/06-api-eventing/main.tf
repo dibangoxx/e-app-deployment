@@ -316,7 +316,7 @@ resource "aws_sfn_state_machine" "checkout" {
           Entries = [{
             EventBusName  = aws_cloudwatch_event_bus.flashinfo.name
             Source        = "flashinfo.orders"
-            "Detail-Type" = "OrderPlaced"
+            DetailType     = "OrderPlaced"
             "Detail.$"    = "States.JsonToString($)"
           }]
         }

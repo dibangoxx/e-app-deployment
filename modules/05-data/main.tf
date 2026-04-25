@@ -166,13 +166,11 @@ resource "aws_rds_cluster_parameter_group" "aurora15" {
 resource "aws_rds_cluster" "aurora" {
   cluster_identifier              = "flashinfo-${var.environment}"
   engine                          = "aurora-postgresql"
-  engine_version                  = "15.4"
   database_name                   = var.db_name
   master_username                 = var.db_master_username
   master_password                 = random_password.aurora_master.result
   db_subnet_group_name            = aws_db_subnet_group.aurora.name
   vpc_security_group_ids          = [aws_security_group.aurora.id]
-  db_cluster_parameter_group_name = aws_rds_cluster_parameter_group.aurora15.name
   storage_encrypted               = true
   kms_key_id                      = var.kms_key_arn
   deletion_protection             = true
@@ -218,7 +216,6 @@ resource "aws_rds_cluster_instance" "writer" {
   cluster_identifier                    = aws_rds_cluster.aurora.id
   instance_class                        = "db.serverless"
   engine                                = aws_rds_cluster.aurora.engine
-  engine_version                        = aws_rds_cluster.aurora.engine_version
   db_subnet_group_name                  = aws_db_subnet_group.aurora.name
   publicly_accessible                   = false
   monitoring_interval                   = 60
@@ -236,7 +233,6 @@ resource "aws_rds_cluster_instance" "reader" {
   cluster_identifier                    = aws_rds_cluster.aurora.id
   instance_class                        = "db.serverless"
   engine                                = aws_rds_cluster.aurora.engine
-  engine_version                        = aws_rds_cluster.aurora.engine_version
   db_subnet_group_name                  = aws_db_subnet_group.aurora.name
   publicly_accessible                   = false
   monitoring_interval                   = 60
@@ -487,7 +483,7 @@ resource "aws_opensearch_domain" "search" {
   }
 
   vpc_options {
-    subnet_ids         = [var.private_subnet_ids[0]]
+    subnet_ids         = var.environment == "prod" ? slice(var.private_subnet_ids, 0, 3) : [var.private_subnet_ids[0]]
     security_group_ids = [aws_security_group.opensearch.id]
   }
 
@@ -502,6 +498,26 @@ resource "aws_opensearch_domain" "search" {
 resource "aws_cloudwatch_log_group" "opensearch" {
   name              = "/flashinfo/opensearch/${var.environment}"
   retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_resource_policy" "opensearch" {
+  policy_name = "flashinfo-opensearch-logs-${var.environment}"
+  policy_document = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Sid    = "AllowOpenSearchServiceLogs"
+      Effect = "Allow"
+      Principal = {
+        Service = "es.amazonaws.com"
+      }
+      Action = [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:DescribeLogStreams"
+      ]
+      Resource = "${aws_cloudwatch_log_group.opensearch.arn}:*"
+    }]
+  })
 }
 
 ###############################################################################

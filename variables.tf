@@ -136,6 +136,10 @@ variable "api_task_memory" {
   type    = number
   default = 1024
 }
+variable "enable_runtime_services" {
+  type    = bool
+  default = true
+}
 variable "web_task_cpu" {
   type    = number
   default = 256
@@ -177,6 +181,10 @@ variable "enable_guardduty" {
 variable "enable_security_hub" {
   type    = bool
   default = true
+}
+variable "enable_security_hub_cis" {
+  type    = bool
+  default = false
 }
 variable "enable_aws_config" {
   type    = bool

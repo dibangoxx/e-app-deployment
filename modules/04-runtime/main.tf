@@ -118,6 +118,7 @@ resource "aws_lb_target_group" "web" {
 ###############################################################################
 
 resource "aws_lb_listener_rule" "api" {
+  count        = var.enable_runtime_services ? 1 : 0
   listener_arn = var.alb_listener_arn
   priority     = 100
   action {
@@ -130,6 +131,7 @@ resource "aws_lb_listener_rule" "api" {
 }
 
 resource "aws_lb_listener_rule" "web" {
+  count        = var.enable_runtime_services ? 1 : 0
   listener_arn = var.alb_listener_arn
   priority     = 200
   action {
@@ -253,6 +255,7 @@ resource "aws_ecs_task_definition" "web" {
 ###############################################################################
 
 resource "aws_ecs_service" "api" {
+  count                             = var.enable_runtime_services ? 1 : 0
   name                              = "flashinfo-api-${var.environment}"
   cluster                           = aws_ecs_cluster.main.id
   task_definition                   = aws_ecs_task_definition.api.arn
@@ -289,6 +292,7 @@ resource "aws_ecs_service" "api" {
 }
 
 resource "aws_ecs_service" "web" {
+  count                             = var.enable_runtime_services ? 1 : 0
   name                              = "flashinfo-web-${var.environment}"
   cluster                           = aws_ecs_cluster.main.id
   task_definition                   = aws_ecs_task_definition.web.arn
@@ -325,19 +329,21 @@ resource "aws_ecs_service" "web" {
 ###############################################################################
 
 resource "aws_appautoscaling_target" "api" {
+  count              = var.enable_runtime_services ? 1 : 0
   max_capacity       = 20
   min_capacity       = 2
-  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api.name}"
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api[0].name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
 resource "aws_appautoscaling_policy" "api_cpu" {
+  count              = var.enable_runtime_services ? 1 : 0
   name               = "flashinfo-api-cpu-${var.environment}"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.api.resource_id
-  scalable_dimension = aws_appautoscaling_target.api.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.api.service_namespace
+  resource_id        = aws_appautoscaling_target.api[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.api[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.api[0].service_namespace
 
   target_tracking_scaling_policy_configuration {
     target_value       = 65.0
@@ -350,11 +356,12 @@ resource "aws_appautoscaling_policy" "api_cpu" {
 }
 
 resource "aws_appautoscaling_policy" "api_memory" {
+  count              = var.enable_runtime_services ? 1 : 0
   name               = "flashinfo-api-memory-${var.environment}"
   policy_type        = "TargetTrackingScaling"
-  resource_id        = aws_appautoscaling_target.api.resource_id
-  scalable_dimension = aws_appautoscaling_target.api.scalable_dimension
-  service_namespace  = aws_appautoscaling_target.api.service_namespace
+  resource_id        = aws_appautoscaling_target.api[0].resource_id
+  scalable_dimension = aws_appautoscaling_target.api[0].scalable_dimension
+  service_namespace  = aws_appautoscaling_target.api[0].service_namespace
 
   target_tracking_scaling_policy_configuration {
     target_value       = 75.0
@@ -392,6 +399,11 @@ variable "alb_security_group_id" {
 }
 variable "alb_listener_arn" {
   type = string
+}
+variable "enable_runtime_services" {
+  type        = bool
+  default     = true
+  description = "Enable ALB listener rules and ECS services"
 }
 variable "ecr_api_image" {
   type = string
@@ -451,8 +463,8 @@ variable "eventbridge_bus_name" {
 
 output "ecs_cluster_name" { value = aws_ecs_cluster.main.name }
 output "ecs_cluster_arn" { value = aws_ecs_cluster.main.arn }
-output "api_service_name" { value = aws_ecs_service.api.name }
-output "web_service_name" { value = aws_ecs_service.web.name }
+output "api_service_name" { value = var.enable_runtime_services ? aws_ecs_service.api[0].name : "flashinfo-api-disabled" }
+output "web_service_name" { value = var.enable_runtime_services ? aws_ecs_service.web[0].name : "flashinfo-web-disabled" }
 output "ecs_security_group_id" { value = aws_security_group.ecs.id }
 output "api_target_group_arn" { value = aws_lb_target_group.api.arn }
 output "web_target_group_arn" { value = aws_lb_target_group.web.arn }

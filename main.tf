@@ -70,6 +70,7 @@ module "landing_zone" {
   log_retention_days   = var.log_retention_days
   enable_guardduty     = var.enable_guardduty
   enable_security_hub  = var.enable_security_hub
+  enable_security_hub_cis = var.enable_security_hub_cis
   enable_config        = var.enable_aws_config
   backup_vault_name    = var.backup_vault_name
 }
@@ -111,6 +112,7 @@ module "runtime" {
   private_subnet_ids      = module.network.private_subnet_ids
   alb_security_group_id   = module.network.alb_security_group_id
   alb_listener_arn        = module.network.alb_https_listener_arn
+  enable_runtime_services = var.enable_runtime_services
   ecr_api_image           = var.ecr_api_image
   ecr_web_image           = var.ecr_web_image
   api_cpu                 = var.api_task_cpu
