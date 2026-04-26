@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+*.env
+
+# Terraform state — keep tfvars out of git too
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+**/.terraform/
+*.tfplan
+terraform/environments/*/terraform.tfvars
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# Docker volumes (if mounted locally)
+.localstack/
+postgres_data/
+redis_data/

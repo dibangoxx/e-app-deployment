@@ -1,0 +1,240 @@
+###############################################################################
+# FlashInfo — Local Development Stack
+# Mirrors AWS services locally:
+#   PostgreSQL  → Aurora PostgreSQL
+#   Redis       → ElastiCache Redis
+#   OpenSearch  → Amazon OpenSearch
+#   LocalStack  → S3, SQS, EventBridge, SES, Secrets Manager, KMS
+#   API         → ECS Fargate API service
+#   Web         → ECS Fargate Web/Frontend service
+###############################################################################
+
+version: "3.9"
+
+networks:
+  flashinfo:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  opensearch_data:
+  localstack_data:
+
+services:
+
+  # ─── PostgreSQL (mirrors Aurora PostgreSQL 15) ─────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: flashinfo-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       flashinfo
+      POSTGRES_USER:     flashinfo_admin
+      POSTGRES_PASSWORD: flashinfo_local_password
+      PGDATA:            /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./app/backend/src/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./app/backend/src/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flashinfo_admin -d flashinfo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - flashinfo
+
+  # ─── Redis (mirrors ElastiCache Redis 7.1) ─────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: flashinfo-redis
+    restart: unless-stopped
+    command: redis-server --requirepass flashinfo_redis_local --loglevel warning
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "flashinfo_redis_local", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - flashinfo
+
+  # ─── OpenSearch (mirrors Amazon OpenSearch 2.11) ───────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: flashinfo-opensearch
+    restart: unless-stopped
+    environment:
+      discovery.type:               single-node
+      OPENSEARCH_JAVA_OPTS:         "-Xms512m -Xmx512m"
+      plugins.security.disabled:    "true"
+      DISABLE_INSTALL_DEMO_CONFIG:  "true"
+    ports:
+      - "9200:9200"
+      - "9600:9600"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -qv '\"status\":\"red\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 40
+      start_period: 60s
+    networks:
+      - flashinfo
+
+  # ─── LocalStack (S3, SQS, EventBridge, SES, Secrets Manager) ──────────────
+  localstack:
+    image: localstack/localstack:3.3
+    container_name: flashinfo-localstack
+    restart: unless-stopped
+    environment:
+      SERVICES:          s3,sqs,events,ses,secretsmanager,kms,lambda,stepfunctions
+      DEBUG:             0
+      PERSISTENCE:       1
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID:     local
+      AWS_SECRET_ACCESS_KEY: local
+    ports:
+      - "4566:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/init.sh:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:4566/_localstack/health | grep -q '\"s3\": \"available\"'"]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    networks:
+      - flashinfo
+
+  # ─── API Service (Node.js / Express) ───────────────────────────────────────
+  api:
+    build:
+      context: ./app/backend
+      dockerfile: Dockerfile
+      target: development
+    container_name: flashinfo-api
+    restart: unless-stopped
+    env_file:
+      - path: .env.local
+        required: false
+    environment:
+      NODE_ENV:          development
+      PORT:              3001
+      DB_HOST:           postgres
+      DB_PORT:           5432
+      DB_NAME:           flashinfo
+      DB_USER:           flashinfo_admin
+      DB_PASSWORD:       flashinfo_local_password
+      REDIS_HOST:        redis
+      REDIS_PORT:        6379
+      REDIS_PASSWORD:    flashinfo_redis_local
+      OPENSEARCH_HOST:   http://opensearch:9200
+      AWS_ENDPOINT:      http://localstack:4566
+      AWS_REGION:        us-east-1
+      AWS_ACCESS_KEY_ID:     local
+      AWS_SECRET_ACCESS_KEY: local
+      DOCUMENTS_BUCKET:  flashinfo-documents-local
+      EVENT_BUS_NAME:    flashinfo-local
+      JWT_SECRET:        flashinfo-local-dev-secret-change-in-prod
+      STRIPE_SECRET_KEY: sk_test_REPLACE_WITH_YOUR_STRIPE_TEST_KEY
+      CORS_ORIGINS:      "http://localhost:3000,http://localhost:3001"
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./app/backend:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - flashinfo
+
+  # ─── Web / Frontend ────────────────────────────────────────────────────────
+  web:
+    build:
+      context: ./app/frontend
+      dockerfile: Dockerfile
+      target: development
+    container_name: flashinfo-web
+    restart: unless-stopped
+    environment:
+      NODE_ENV:    development
+      PORT:        3000
+      API_URL:     http://api:3001
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./app/frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+    networks:
+      - flashinfo
+
+  # ─── Adminer (DB GUI — replaces RDS console) ───────────────────────────────
+  adminer:
+    image: adminer:4.8.1
+    container_name: flashinfo-adminer
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN:         dracula
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - flashinfo
+
+  # ─── Redis Commander (Redis GUI) ───────────────────────────────────────────
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: flashinfo-redis-ui
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS:     local:redis:6379:0:flashinfo_redis_local
+      HTTP_USER:       admin
+      HTTP_PASSWORD:   admin
+    ports:
+      - "8081:8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - flashinfo
+
+  # ─── OpenSearch Dashboards (replaces QuickSight locally) ──────────────────
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: flashinfo-osd
+    restart: unless-stopped
+    environment:
+      OPENSEARCH_HOSTS:                '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    ports:
+      - "5601:5601"
+    depends_on:
+      opensearch:
+        condition: service_healthy
+    networks:
+      - flashinfo

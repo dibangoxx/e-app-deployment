@@ -1,0 +1,38 @@
+###############################################################################
+# docker-compose.override.yml
+# Auto-loaded by Docker Compose on top of docker-compose.yml.
+# Development-only overrides — NOT used in production.
+###############################################################################
+
+version: "3.9"
+
+services:
+
+  # Hot-reload source code without rebuilding image
+  api:
+    volumes:
+      - ./app/backend:/app
+      - /app/node_modules        # anonymous volume preserves container's node_modules
+    environment:
+      LOG_LEVEL: debug
+      NODE_ENV:  development
+    # Override production CMD with nodemon for hot-reload
+    command: ["npm", "run", "dev"]
+
+  web:
+    volumes:
+      - ./app/frontend:/app
+
+  # Give postgres more time to init on slow machines
+  postgres:
+    command: >
+      postgres
+        -c log_statement=all
+        -c log_duration=on
+        -c log_min_duration_statement=200
+
+  # Expose LocalStack UI port (only in dev)
+  localstack:
+    ports:
+      - "4566:4566"
+      - "4510-4560:4510-4560"

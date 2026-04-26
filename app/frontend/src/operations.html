@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlashInfo Operations Cloud</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-1: #06121e;
+      --bg-2: #0f2238;
+      --bg-3: #183c62;
+      --ink: #eaf3ff;
+      --muted: #a8c2df;
+      --line: rgba(168, 194, 223, 0.22);
+      --card: rgba(16, 35, 56, 0.72);
+      --accent: #2ee6b8;
+      --amber: #ffb147;
+      --danger: #ff6f78;
+      --ok: #7cf58d;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(1000px 550px at 10% -10%, rgba(46, 230, 184, 0.25), transparent),
+        radial-gradient(900px 450px at 100% 0%, rgba(255, 177, 71, 0.18), transparent),
+        linear-gradient(150deg, var(--bg-1), var(--bg-2) 42%, var(--bg-3));
+      color: var(--ink);
+      font-family: "Space Grotesk", system-ui, sans-serif;
+      padding: 22px;
+    }
+
+    .shell {
+      max-width: 1240px;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background: rgba(6, 18, 30, 0.6);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 20px 80px rgba(0, 0, 0, 0.35);
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), transparent);
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-family: "Fraunces", serif;
+      font-size: clamp(1.2rem, 2.2vw, 1.8rem);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+    }
+
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .auth {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      gap: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .field label {
+      font-size: 0.72rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .field input {
+      width: 190px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      color: var(--ink);
+      padding: 10px 12px;
+      font: inherit;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 16px;
+      cursor: pointer;
+      color: #041018;
+      background: linear-gradient(135deg, var(--accent), #6cf0dc);
+      font-family: inherit;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-size: 0.76rem;
+    }
+
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .status {
+      padding: 0 24px 16px;
+      color: var(--muted);
+      font-size: 0.85rem;
+      min-height: 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 14px;
+      padding: 0 18px 18px;
+    }
+
+    .panel {
+      grid-column: span 12;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+      animation: rise 380ms ease;
+    }
+
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 0.95rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .kpis {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 10px;
+    }
+
+    .kpi {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .kpi .label {
+      color: var(--muted);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .kpi .value {
+      margin-top: 6px;
+      font-size: 1.1rem;
+      font-weight: 700;
+    }
+
+    .col-6 { grid-column: span 6; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+    }
+
+    th, td {
+      padding: 9px 8px;
+      border-bottom: 1px solid rgba(168, 194, 223, 0.14);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border: 1px solid transparent;
+    }
+
+    .pill.warning { color: #ffd8a0; border-color: rgba(255, 177, 71, 0.4); }
+    .pill.critical { color: #ffd0d6; border-color: rgba(255, 111, 120, 0.45); }
+    .pill.healthy { color: #c7ffd0; border-color: rgba(124, 245, 141, 0.45); }
+
+    @media (max-width: 1100px) {
+      .kpis { grid-template-columns: repeat(3, 1fr); }
+      .col-6 { grid-column: span 12; }
+      .field input { width: 160px; }
+    }
+
+    @media (max-width: 740px) {
+      body { padding: 10px; }
+      .topbar { align-items: start; flex-direction: column; }
+      .auth { width: 100%; }
+      .field { flex: 1; min-width: 130px; }
+      .field input { width: 100%; }
+      .kpis { grid-template-columns: repeat(2, 1fr); }
+      .panel { overflow-x: auto; }
+    }
+
+    @keyframes rise {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div class="brand">
+        <h1>FlashInfo Operations Cloud</h1>
+        <p>Inventory, Orders, Customers, Procurement</p>
+      </div>
+      <div class="auth">
+        <div class="field">
+          <label>Email</label>
+          <input id="email" type="email" value="admin@flashinfo.local" />
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input id="password" type="password" value="Admin1234!" />
+        </div>
+        <button class="btn" id="loginBtn">Login + Load</button>
+        <button class="btn secondary" id="refreshBtn">Refresh</button>
+      </div>
+    </div>
+    <div class="status" id="status">Authenticate as admin to load operations analytics.</div>
+
+    <section class="grid">
+      <article class="panel">
+        <h2>Command KPIs</h2>
+        <div class="kpis" id="kpis"></div>
+      </article>
+
+      <article class="panel col-6">
+        <h2>Low Stock</h2>
+        <table>
+          <thead>
+            <tr><th>SKU</th><th>Name</th><th>Available</th><th>Reorder</th><th>Status</th></tr>
+          </thead>
+          <tbody id="lowStockBody"></tbody>
+        </table>
+      </article>
+
+      <article class="panel col-6">
+        <h2>Procurement Recommendations</h2>
+        <table>
+          <thead>
+            <tr><th>SKU</th><th>Sold 30d</th><th>Available</th><th>Suggested PO Qty</th></tr>
+          </thead>
+          <tbody id="poBody"></tbody>
+        </table>
+      </article>
+
+      <article class="panel col-6">
+        <h2>Order Pipeline</h2>
+        <table>
+          <thead>
+            <tr><th>Status</th><th>Count</th><th>Gross Value</th></tr>
+          </thead>
+          <tbody id="pipelineBody"></tbody>
+        </table>
+      </article>
+
+      <article class="panel col-6">
+        <h2>Customer Segments</h2>
+        <table>
+          <thead>
+            <tr><th>Segment</th><th>Customers</th><th>Avg Spend</th><th>Total Spend</th></tr>
+          </thead>
+          <tbody id="segmentsBody"></tbody>
+        </table>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const currency = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+    const number = new Intl.NumberFormat('en-US');
+
+    let token = '';
+
+    const statusEl = document.getElementById('status');
+    const kpisEl = document.getElementById('kpis');
+
+    function setStatus(message, isError = false) {
+      statusEl.textContent = message;
+      statusEl.style.color = isError ? '#ffb7bf' : 'var(--muted)';
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      setStatus('Authenticating...');
+
+      const res = await fetch('/api/v1/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Login failed');
+      }
+      token = data.token;
+      setStatus('Authenticated. Loading live operations data...');
+    }
+
+    async function api(path) {
+      const res = await fetch(path, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Request failed: ${path}`);
+      }
+      return data;
+    }
+
+    function renderKpis(summary) {
+      const cards = [
+        ['Revenue 30d', currency.format(Number(summary.kpis.revenue_30d || 0))],
+        ['Orders 30d', number.format(Number(summary.kpis.orders_30d || 0))],
+        ['AOV 30d', currency.format(Number(summary.kpis.avg_order_value_30d || 0))],
+        ['Open Orders', number.format(Number(summary.kpis.open_orders || 0))],
+        ['Low Stock SKUs', number.format(Number(summary.fulfillment.low_stock_skus || 0))],
+        ['New Customers 30d', number.format(Number(summary.customers.new_customers_30d || 0))],
+      ];
+
+      kpisEl.innerHTML = cards.map(([label, value]) => `
+        <div class="kpi">
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+        </div>
+      `).join('');
+    }
+
+    function fillTable(tableId, rows, columns) {
+      const el = document.getElementById(tableId);
+      if (!rows.length) {
+        el.innerHTML = '<tr><td colspan="10">No data available.</td></tr>';
+        return;
+      }
+      el.innerHTML = rows.map((row) => `<tr>${columns.map((col) => `<td>${col(row)}</td>`).join('')}</tr>`).join('');
+    }
+
+    async function loadOperations() {
+      const [summary, lowStock, pipeline, segments, procurement] = await Promise.all([
+        api('/api/v1/operations/summary'),
+        api('/api/v1/operations/inventory/low-stock?limit=15'),
+        api('/api/v1/operations/orders/pipeline'),
+        api('/api/v1/operations/customers/segments'),
+        api('/api/v1/operations/procurement/recommendations'),
+      ]);
+
+      renderKpis(summary);
+
+      fillTable('lowStockBody', lowStock.data, [
+        (r) => r.sku,
+        (r) => r.name,
+        (r) => number.format(Number(r.available || 0)),
+        (r) => number.format(Number(r.reorder_point || 0)),
+        (r) => `<span class="pill ${r.stock_status}">${r.stock_status}</span>`,
+      ]);
+
+      fillTable('poBody', procurement.data.slice(0, 15), [
+        (r) => r.sku,
+        (r) => number.format(Number(r.sold_30d || 0)),
+        (r) => number.format(Number(r.available || 0)),
+        (r) => number.format(Number(r.suggested_po_qty || 0)),
+      ]);
+
+      fillTable('pipelineBody', pipeline.by_status, [
+        (r) => r.status,
+        (r) => number.format(Number(r.count || 0)),
+        (r) => currency.format(Number(r.gross_value || 0)),
+      ]);
+
+      fillTable('segmentsBody', segments.data, [
+        (r) => r.segment,
+        (r) => number.format(Number(r.customers || 0)),
+        (r) => currency.format(Number(r.avg_spend || 0)),
+        (r) => currency.format(Number(r.total_spend || 0)),
+      ]);
+
+      setStatus(`Last refresh: ${new Date().toLocaleString()}`);
+    }
+
+    async function loginAndLoad() {
+      try {
+        await login();
+        await loadOperations();
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    }
+
+    document.getElementById('loginBtn').addEventListener('click', loginAndLoad);
+    document.getElementById('refreshBtn').addEventListener('click', async () => {
+      try {
+        if (!token) {
+          setStatus('Please login first.', true);
+          return;
+        }
+        setStatus('Refreshing operations datasets...');
+        await loadOperations();
+      } catch (err) {
+        setStatus(err.message, true);
+      }
+    });
+  </script>
+</body>
+</html>
